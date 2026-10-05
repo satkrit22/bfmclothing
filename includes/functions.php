@@ -242,7 +242,7 @@ function setting(string $key, string $default = ''): string
  * ================================================================ */
 function money($amount): string
 {
-    return setting('currency_symbol', '$') . number_format((float)$amount, 2);
+    return 'Rs. ' . number_format((float)$amount, 2);
 }
 
 function format_date(?string $date, string $format = 'd M Y'): string
