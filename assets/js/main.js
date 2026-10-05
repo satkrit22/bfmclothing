@@ -12,7 +12,7 @@
 (function () {
   'use strict';
 
-  var BFM = window.BFM || { base: '', csrf: '', loggedIn: false, currency: '$' };
+  var BFM = window.BFM || { base: '', csrf: '', loggedIn: false, currency: 'Rs.' };
 
   /* ---------------- tiny helpers ---------------- */
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
