@@ -1,0 +1,22 @@
+# BFM Clothing - Apache settings (XAMPP has mod_rewrite/mod_headers enabled by default)
+Options -Indexes
+ErrorDocument 404 /bfm-clothing/404.php
+DirectoryIndex index.php
+
+# Block access to sensitive files
+<FilesMatch "\.(sql|md|log|ini|sh|bak)$">
+    Require all denied
+</FilesMatch>
+
+# Compression + caching for static assets
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript image/svg+xml application/json
+</IfModule>
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+</IfModule>

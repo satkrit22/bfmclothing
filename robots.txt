@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /bfm-clothing/admin/
+Disallow: /bfm-clothing/api/
+Disallow: /bfm-clothing/cart.php
+Disallow: /bfm-clothing/checkout.php
+Disallow: /bfm-clothing/account.php
+Allow: /
+
+Sitemap: http://localhost/bfm-clothing/sitemap.php
