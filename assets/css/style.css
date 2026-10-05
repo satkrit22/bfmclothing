@@ -218,6 +218,23 @@ textarea.form-control { min-height: 130px; resize: vertical; }
 .stars { display: inline-flex; gap: 1px; color: #c9a227; }
 .stars .icon { width: 14px; height: 14px; stroke-width: 1.5; }
 
+/* ---------- Homepage polish ---------- */
+.eyebrow { margin: 0 0 10px; color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.hero .eyebrow { color: rgba(255,255,255,.72); }
+.trust-strip { border-bottom: 1px solid var(--line); }
+.trust-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
+.trust-grid div { display: grid; gap: 3px; }
+.trust-grid strong { font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; }
+.trust-grid span { color: var(--muted); font-size: .9rem; }
+@media (min-width: 768px) { .trust-grid { grid-template-columns: repeat(3, 1fr); gap: 32px; } }
+.section-dark { background: var(--ink); color: #fff; }
+.section-dark .eyebrow, .section-dark p { color: rgba(255,255,255,.7); }
+.editorial-grid { display: grid; gap: 28px; align-items: end; }
+.editorial-grid h2 { max-width: 8ch; font-size: clamp(2.8rem, 8vw, 6rem); margin: 0; }
+.editorial-grid p { max-width: 42ch; }
+.section-dark .link-arrow { color: #fff; }
+@media (min-width: 768px) { .editorial-grid { grid-template-columns: 1fr 1fr; gap: 72px; } }
+
 /* ---------- Home: hero ---------- */
 .hero { position: relative; min-height: min(86vh, 760px); display: grid; align-items: end; color: #fff; background: #1b1b1b; overflow: hidden; }
 .hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
