@@ -242,7 +242,11 @@ function setting(string $key, string $default = ''): string
  * ================================================================ */
 function money($amount): string
 {
-    return 'Rs. ' . number_format((float)$amount, 2);
+    $value = is_numeric($amount) ? (float)$amount : 0.0;
+    $negative = $value < 0;
+    $value = abs($value);
+    $formatted = number_format($value, 2, '.', ',');
+    return ($negative ? '- ' : '') . 'Rs. ' . $formatted;
 }
 
 function format_date(?string $date, string $format = 'd M Y'): string
