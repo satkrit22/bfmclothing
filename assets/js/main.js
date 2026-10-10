@@ -436,6 +436,10 @@
     api('api/quickview.php', { method: 'GET', data: { id: btn.dataset.quickview } }).then(function (res) {
       if (!res.ok) { qvModal.close(); toast(res.message || 'Could not load this product.', 'error'); return; }
       qvRender(res.product);
+      if (btn.hasAttribute('data-quickview-add')) {
+        var quickAdd = qvBody.querySelector('[data-add-to-cart]');
+        if (quickAdd) quickAdd.click();
+      }
     });
   });
   if (qvModal) {
