@@ -16,22 +16,15 @@ const ADMIN_IDLE_SECONDS = 7200; // log out after 2 hours of inactivity
 
 function is_admin(): bool
 {
-    return !empty($_SESSION['admin_id']);
+    return has_role('staff', 'admin', 'super_admin');
 }
 
 function current_admin(): ?array
 {
-    static $admin = false;
-    if ($admin === false) {
-        $admin = null;
-        if (is_admin()) {
-            $admin = db_one('SELECT id, name, email, role FROM admins WHERE id = ? AND is_active = 1', [(int)$_SESSION['admin_id']]);
-            if ($admin === null) {
-                unset($_SESSION['admin_id']);
-            }
-        }
-    }
-    return $admin;
+    if (!is_admin()) return null;
+    $user = current_user();
+    if (!$user) return null;
+    return ['id'=>$user['id'], 'name'=>trim($user['first_name'].' '.$user['last_name']), 'email'=>$user['email'], 'role'=>current_role()];
 }
 
 function admin_login(array $admin): void
@@ -40,7 +33,7 @@ function admin_login(array $admin): void
     $_SESSION['admin_id']        = (int)$admin['id'];
     $_SESSION['admin_last_seen'] = time();
     unset($_SESSION['csrf_token']);
-    db_query('UPDATE admins SET last_login_at = NOW() WHERE id = ?', [(int)$admin['id']]);
+    db_query("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", [(int)$admin['id']]);
 }
 
 function admin_logout(): void
