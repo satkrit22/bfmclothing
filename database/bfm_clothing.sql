@@ -21,6 +21,7 @@ CREATE TABLE users (
   last_name VARCHAR(60) NOT NULL,
   email VARCHAR(190) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  role ENUM('customer','staff','admin','super_admin') NOT NULL DEFAULT 'customer',
   phone VARCHAR(30) DEFAULT NULL,
   remember_selector CHAR(24) DEFAULT NULL,
   remember_token_hash CHAR(64) DEFAULT NULL,

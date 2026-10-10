@@ -1,0 +1,5 @@
+<?php
+require_once __DIR__.'/includes/init.php'; require_login();
+$user=current_user(); $orders=db_all('SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC',[(int)$user['id']]);
+$pageTitle='Your orders'; require __DIR__.'/includes/header.php';
+?><section class="container page-section"><p class="eyebrow">Account</p><h1>Your orders</h1><?php if(!$orders): ?><div class="empty-state"><h2>No orders yet</h2><p>Your purchases will appear here.</p><a class="btn btn-primary" href="<?=e(url('shop.php'))?>">Shop now</a></div><?php else: ?><div class="orders-list"><?php foreach($orders as $o): ?><article class="account-card"><div style="display:flex;justify-content:space-between;gap:1rem"><strong><?=e($o['order_number'] ?: '#'.$o['id'])?></strong><span class="badge badge-light"><?=e(ucfirst($o['status']))?></span></div><p><?=e(date('M j, Y',strtotime($o['created_at'])))?></p><strong><?=e(money($o['total']))?></strong></article><?php endforeach; ?></div><?php endif; ?></section><?php require __DIR__.'/includes/footer.php'; ?>

@@ -33,7 +33,7 @@ function admin_login(array $admin): void
     $_SESSION['admin_id']        = (int)$admin['id'];
     $_SESSION['admin_last_seen'] = time();
     unset($_SESSION['csrf_token']);
-    db_query('UPDATE admins SET last_login_at = NOW() WHERE id = ?', [(int)$admin['id']]);
+    db_query("UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", [(int)$admin['id']]);
 }
 
 function admin_logout(): void
