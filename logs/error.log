@@ -15,3 +15,38 @@
 [10-Oct-2026 06:05:17 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4
 [10-Oct-2026 06:05:19 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4
 [10-Oct-2026 06:07:00 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4
+[10-Oct-2026 15:58:44 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 15:58:45 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 15:59:19 UTC] PHP Warning:  Undefined variable $wishlist_ids in C:\xampp\htdocs\bfmclothing\wishlist.php on line 1
+[10-Oct-2026 15:59:19 UTC] [uncaught] Error: Value of type null is not callable in C:\xampp\htdocs\bfmclothing\wishlist.php:1
+[10-Oct-2026 15:59:52 UTC] [uncaught] Error: Call to undefined function is_admin() in C:\xampp\htdocs\bfmclothing\admin\login.php:4
+[10-Oct-2026 16:00:05 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:06 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:07 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:08 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:10 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:11 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:12 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:12 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:13 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:15 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:20 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:21 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:21 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:32 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:33 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:00:34 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:20 UTC] PHP Warning:  Undefined variable $wishlist_ids in C:\xampp\htdocs\bfmclothing\wishlist.php on line 1
+[10-Oct-2026 16:01:20 UTC] [uncaught] Error: Value of type null is not callable in C:\xampp\htdocs\bfmclothing\wishlist.php:1
+[10-Oct-2026 16:01:31 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:32 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:32 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:35 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:36 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:01:37 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4
+[10-Oct-2026 16:06:07 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:06:11 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:06:12 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:06:14 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\api\quickview.php:6
+[10-Oct-2026 16:06:18 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4
+[10-Oct-2026 16:06:24 UTC] [uncaught] Error: Call to undefined function product_list_select() in C:\xampp\htdocs\bfmclothing\product.php:4

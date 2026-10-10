@@ -22,6 +22,15 @@ require_once __DIR__ . '/auth.php';
 // Last-resort handler: log the real error, show a friendly page.
 set_exception_handler(function (Throwable $e): void {
     error_log('[uncaught] ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+
+    $isApiRequest = str_starts_with((string)($_SERVER['REQUEST_URI'] ?? ''), BASE_PATH . '/api/');
+    if ($isApiRequest) {
+        json_response([
+            'ok' => false,
+            'message' => APP_DEBUG ? $e->getMessage() : 'The server could not complete this request. Check logs/error.log for details.',
+        ], 500);
+    }
+
     if (APP_DEBUG) {
         throw $e;
     }

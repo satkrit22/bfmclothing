@@ -57,7 +57,7 @@ function product_card(array $p): string
             <div class="product-actions">
                 <button type="button" class="btn btn-light btn-sm" data-quickview="<?= (int)$p['id'] ?>"><?= icon('eye') ?> Quick view</button>
                 <?php if (!$soldOut): ?>
-                    <button type="button" class="btn btn-primary btn-sm" data-quickview="<?= (int)$p['id'] ?>"><?= icon('bag') ?> Add to cart</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-quickview="<?= (int)$p['id'] ?>" data-quickview-add="true"><?= icon('bag') ?> Add to cart</button>
                 <?php endif; ?>
             </div>
         </div>
