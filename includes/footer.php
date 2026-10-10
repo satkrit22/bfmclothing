@@ -12,7 +12,7 @@ $bfmConfig = [
     'base'     => BASE_PATH,
     'csrf'     => csrf_token(),
     'loggedIn' => is_logged_in(),
-    'currency' => setting('currency_symbol', '$'),
+    'currency' => setting('currency_symbol', 'Rs.'),
 ];
 ?>
 </main>

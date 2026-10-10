@@ -5,7 +5,7 @@ $id = input_int('id', 0, 'get');
 if ($id < 1) json_response(['ok'=>false,'message'=>'Invalid product.'], 422);
 $p = db_one(product_list_select().' WHERE p.id=? AND p.is_active=1 LIMIT 1', [$id]);
 if (!$p) json_response(['ok'=>false,'message'=>'Product not found.'], 404);
-$variants = db_all('SELECT id,size,color,color_hex,stock FROM product_variants WHERE product_id=? ORDER BY size,color', [$id]);
+$variants = db_all('SELECT id,size,color,stock FROM product_variants WHERE product_id=? ORDER BY size,color', [$id]);
 $p['price_text'] = money(effective_price($p));
 $p['was_text'] = discount_percent($p) > 0 ? money($p['price']) : '';
 $p['image_url'] = product_image_url($p['image_path'] ?? null, (string)$p['name'], 0);
