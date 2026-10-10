@@ -13,6 +13,22 @@ function is_logged_in(): bool
     return !empty($_SESSION['user_id']);
 }
 
+function current_role(): string
+{
+    return (string)($_SESSION['user_role'] ?? 'customer');
+}
+
+function has_role(string ...$roles): bool
+{
+    return is_logged_in() && in_array(current_role(), $roles, true);
+}
+
+function require_role(string ...$roles): void
+{
+    require_login();
+    if (!has_role(...$roles)) render_error_page(403, 'Access denied', 'You do not have permission to open this page.');
+}
+
 /** Currently logged-in customer row (without sensitive columns) or null. */
 function current_user(): ?array
 {
@@ -21,7 +37,7 @@ function current_user(): ?array
         $user = null;
         if (is_logged_in()) {
             $user = db_one(
-                'SELECT id, first_name, last_name, email, phone, created_at FROM users WHERE id = ? AND is_active = 1',
+                'SELECT id, first_name, last_name, email, phone, created_at, COALESCE(role, \'customer\') AS role FROM users WHERE id = ? AND is_active = 1 AND (status IS NULL OR status = \'active\')',
                 [(int)$_SESSION['user_id']]
             );
             if ($user === null) {
@@ -49,7 +65,7 @@ function logout_user(): void
     if (!empty($_SESSION['user_id'])) {
         clear_remember_cookie((int)$_SESSION['user_id']);
     }
-    unset($_SESSION['user_id'], $_SESSION['cart'], $_SESSION['coupon']);
+    unset($_SESSION['user_id'], $_SESSION['user_role'], $_SESSION['admin_id'], $_SESSION['admin_last_seen'], $_SESSION['cart'], $_SESSION['coupon']);
     session_regenerate_id(true);
 }
 
