@@ -47,9 +47,18 @@
     if (opts.signal) init.signal = opts.signal;
     if (method === 'POST') init.body = new URLSearchParams(opts.data || {});
     else if (opts.data) url += '?' + new URLSearchParams(opts.data).toString();
+    init.cache = 'no-store';
     return fetch(url, init).then(function (res) {
-      return res.json().catch(function () { return { ok: false, message: 'Unexpected server response.' }; })
-        .then(function (json) { json._status = res.status; return json; });
+      return res.text().then(function (text) {
+        var json;
+        try { json = JSON.parse(text); } catch (e) {
+          json = { ok: false, message: res.status === 404
+            ? 'The store API endpoint was not found. Check that Apache is serving the project folder.'
+            : 'The server returned an invalid response. Check the PHP error log.' };
+        }
+        json._status = res.status;
+        return json;
+      });
     }).catch(function (err) {
       if (err && err.name === 'AbortError') throw err;
       return { ok: false, message: 'Network problem. Please check your connection and try again.', _status: 0 };
