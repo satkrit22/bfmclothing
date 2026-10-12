@@ -38,7 +38,16 @@ function asset(string $path): string
 
 function redirect(string $path): void
 {
-    $target = preg_match('#^https?://#i', $path) ? $path : url($path);
+    // Absolute URLs and paths that already carry the site base path (e.g. a validated
+    // ?next= value such as /bfmclothing/checkout.php) are used as they are. Everything
+    // else is treated as relative to the site root. This avoids "/bfmclothing/bfmclothing/...".
+    if (preg_match('#^https?://#i', $path)) {
+        $target = $path;
+    } elseif (BASE_PATH !== '' && strpos($path, BASE_PATH . '/') === 0) {
+        $target = $path;
+    } else {
+        $target = url($path);
+    }
     header('Location: ' . $target);
     exit;
 }
@@ -246,7 +255,7 @@ function money($amount): string
     $negative = $value < 0;
     $value = abs($value);
     $formatted = number_format($value, 2, '.', ',');
-    return ($negative ? '- ' : '') . 'Rs. ' . $formatted;
+    return ($negative ? '- ' : '') . setting('currency_symbol', 'Rs.') . ' ' . $formatted;
 }
 
 function format_date(?string $date, string $format = 'd M Y'): string
@@ -380,6 +389,148 @@ function cart_merge_on_login(int $userId): void
     } catch (Throwable $e) {
         error_log('[cart_merge] ' . $e->getMessage());
     }
+}
+
+/* ================================================================
+ * Shipping, coupons and the priced cart (single source of truth)
+ * cart.php, checkout.php and api/cart.php all use these, so the totals a
+ * customer sees are always the totals the server charges.
+ * ================================================================ */
+
+/** Delivery fee for a given subtotal (free above the configured threshold). */
+function shipping_cost(float $subtotal): float
+{
+    if ($subtotal <= 0) {
+        return 0.0;
+    }
+    $threshold = (float)setting('free_shipping_threshold', '3000');
+    $flat      = (float)setting('shipping_flat_rate', '150');
+    return ($threshold > 0 && $subtotal >= $threshold) ? 0.0 : max(0.0, $flat);
+}
+
+function coupon_find(string $code): ?array
+{
+    $code = strtoupper(trim($code));
+    if ($code === '') {
+        return null;
+    }
+    return db_one('SELECT * FROM coupons WHERE code = ? LIMIT 1', [$code]);
+}
+
+/** Returns a customer-friendly error, or null when the coupon can be used on this subtotal. */
+function coupon_error(array $c, float $subtotal): ?string
+{
+    $now = time();
+    if (!(int)$c['is_active']) {
+        return 'This coupon is not active.';
+    }
+    if (!empty($c['starts_at']) && strtotime((string)$c['starts_at']) > $now) {
+        return 'This coupon is not valid yet.';
+    }
+    if (!empty($c['expires_at']) && strtotime((string)$c['expires_at']) < $now) {
+        return 'This coupon has expired.';
+    }
+    if ($c['usage_limit'] !== null && (int)$c['used_count'] >= (int)$c['usage_limit']) {
+        return 'This coupon has reached its usage limit.';
+    }
+    if ($subtotal < (float)$c['min_order']) {
+        return 'This coupon needs a minimum order of ' . money((float)$c['min_order']) . '.';
+    }
+    return null;
+}
+
+function coupon_discount(array $c, float $subtotal): float
+{
+    $value = (float)$c['value'];
+    $disc  = $c['type'] === 'percent' ? round($subtotal * $value / 100, 2) : $value;
+    if ($c['type'] === 'percent' && $c['max_discount'] !== null && (float)$c['max_discount'] > 0) {
+        $disc = min($disc, (float)$c['max_discount']);
+    }
+    return round(max(0.0, min($disc, $subtotal)), 2);
+}
+
+/**
+ * Prices the session cart from the database.
+ * Returns: lines[], subtotal, discount, shipping, total, count, coupon (row|null),
+ *          coupon_error (string|null), issues[] (stock / availability problems).
+ * Lines whose product or variant no longer exists are dropped from the session cart.
+ */
+function cart_summary(): array
+{
+    $cart = cart_items();
+    $out = ['lines' => [], 'subtotal' => 0.0, 'discount' => 0.0, 'shipping' => 0.0, 'total' => 0.0,
+            'count' => 0, 'coupon' => null, 'coupon_error' => null, 'issues' => []];
+    if (!$cart) {
+        unset($_SESSION['coupon']);
+        return $out;
+    }
+
+    $ids = array_map('intval', array_keys($cart));
+    $in  = implode(',', array_fill(0, count($ids), '?'));
+    $rows = db_all(
+        "SELECT v.id AS variant_id, v.size, v.color, v.color_hex, v.sku, v.stock,
+                p.id AS product_id, p.name, p.slug, p.price, p.sale_price, p.is_active,
+                (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id
+                  ORDER BY pi.is_primary DESC, pi.sort_order, pi.id LIMIT 1) AS image_path
+         FROM product_variants v JOIN products p ON p.id = v.product_id
+         WHERE v.id IN ($in)",
+        $ids
+    );
+
+    $byId = [];
+    foreach ($rows as $r) {
+        $byId[(int)$r['variant_id']] = $r;
+    }
+
+    $clean = [];
+    foreach ($cart as $variantId => $qty) {
+        $variantId = (int)$variantId;
+        $r = $byId[$variantId] ?? null;
+        if ($r === null || !(int)$r['is_active']) {
+            $out['issues'][] = 'An item in your cart is no longer available and was removed.';
+            continue;
+        }
+        $qty = max(1, min(10, (int)$qty));
+        $stock = (int)$r['stock'];
+        if ($stock <= 0) {
+            $r['issue'] = 'Out of stock';
+            $out['issues'][] = $r['name'] . ' (' . $r['color'] . ', ' . $r['size'] . ') is out of stock. Remove it to continue.';
+        } elseif ($qty > $stock) {
+            $r['issue'] = 'Only ' . $stock . ' left';
+            $out['issues'][] = 'Only ' . $stock . ' of ' . $r['name'] . ' (' . $r['color'] . ', ' . $r['size'] . ') left. Lower the quantity to continue.';
+        }
+        $r['quantity']   = $qty;
+        $r['unit_price'] = effective_price($r);
+        $r['line_total'] = round($r['unit_price'] * $qty, 2);
+        $r['image_url']  = product_image_url($r['image_path'] ?? null, (string)$r['name'], 0);
+        $r['url']        = product_url($r);
+        $out['lines'][]  = $r;
+        $out['subtotal'] += $r['line_total'];
+        $out['count']    += $qty;
+        $clean[$variantId] = $qty;
+    }
+    if ($clean !== $cart) {
+        $_SESSION['cart'] = $clean;
+        cart_persist();
+    }
+
+    $out['subtotal'] = round($out['subtotal'], 2);
+
+    if (!empty($_SESSION['coupon'])) {
+        $coupon = coupon_find((string)$_SESSION['coupon']);
+        $err = $coupon ? coupon_error($coupon, $out['subtotal']) : 'That coupon no longer exists.';
+        if ($coupon && $err === null) {
+            $out['coupon']   = $coupon;
+            $out['discount'] = coupon_discount($coupon, $out['subtotal']);
+        } else {
+            $out['coupon_error'] = $err;
+            unset($_SESSION['coupon']);
+        }
+    }
+
+    $out['shipping'] = shipping_cost($out['subtotal']);
+    $out['total']    = round($out['subtotal'] - $out['discount'] + $out['shipping'], 2);
+    return $out;
 }
 
 /* ================================================================

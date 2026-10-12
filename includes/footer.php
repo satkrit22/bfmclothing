@@ -15,7 +15,7 @@ $bfmConfig = [
     'currency' => setting('currency_symbol', '$'),
 ];
 ?>
-</main>
+</div>
 
 <footer class="site-footer">
     <div class="container footer-grid">

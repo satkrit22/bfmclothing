@@ -397,8 +397,13 @@
     var sizes = [], colors = [];
     p.variants.forEach(function (v) {
       if (sizes.indexOf(v.size) < 0) sizes.push(v.size);
-      if (!colors.some(function (c) { return c.name === v.color; })) colors.push({ name: v.color, hex: v.hex || '#111111' });
+      var known = colors.filter(function (c) { return c.name === v.color; })[0];
+      if (known) known.stock += v.stock;
+      else colors.push({ name: v.color, hex: v.hex || '#111111', stock: v.stock });
     });
+    // pre-select the first colour that is actually in stock
+    var defaultColor = 0;
+    for (var ci = 0; ci < colors.length; ci++) { if (colors[ci].stock > 0) { defaultColor = ci; break; } }
     var form = h('form', { 'data-variants': JSON.stringify(p.variants.map(function (v) { return { id: v.id, size: v.size, color: v.color, stock: v.stock }; })) });
     form.appendChild(h('input', { type: 'hidden', name: 'variant_id', value: '' }));
 
@@ -406,7 +411,7 @@
       return h('label', { class: 'chip' }, [h('input', { type: 'radio', name: 'size', value: s, checked: sizes.length === 1 ? 'checked' : false }), h('span', { text: s })]);
     }))]);
     var colorGroup = h('div', { class: 'option-group' }, [h('div', { class: 'option-label', text: 'Colour' }), h('div', { class: 'chip-list' }, colors.map(function (c, i) {
-      var sw = h('label', { class: 'swatch', title: c.name }, [h('input', { type: 'radio', name: 'color', value: c.name, 'aria-label': c.name, checked: i === 0 ? 'checked' : false }), h('span', { style: 'background:' + (/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#111') })]);
+      var sw = h('label', { class: 'swatch', title: c.name }, [h('input', { type: 'radio', name: 'color', value: c.name, 'aria-label': c.name, checked: i === defaultColor ? 'checked' : false }), h('span', { style: 'background:' + (/^#[0-9a-fA-F]{6}$/.test(c.hex) ? c.hex : '#111') })]);
       return sw;
     }))]);
     form.appendChild(colorGroup);
@@ -446,8 +451,12 @@
       if (!res.ok) { qvModal.close(); toast(res.message || 'Could not load this product.', 'error'); return; }
       qvRender(res.product);
       if (btn.hasAttribute('data-quickview-add')) {
+        // "Add to cart" on a product card: add straight away when there is nothing to choose
+        // (a single size), otherwise leave the modal open and ask for a size.
+        var sizeInputs = $$('input[name="size"]', qvBody);
         var quickAdd = qvBody.querySelector('[data-add-to-cart]');
-        if (quickAdd) quickAdd.click();
+        if (sizeInputs.length === 1 && quickAdd) quickAdd.click();
+        else toast('Choose a size, then press Add to cart.', 'info');
       }
     });
   });

@@ -18,6 +18,9 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/auth.php';
+// Needed by pages AND api endpoints (product_list_select, product_card, ...).
+// Previously only header.php loaded it, which broke api/quickview.php and product.php.
+require_once __DIR__ . '/components.php';
 
 // Last-resort handler: log the real error, show a friendly page.
 set_exception_handler(function (Throwable $e): void {
