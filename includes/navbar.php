@@ -89,7 +89,7 @@ $wishCount = wishlist_count();
 <!-- Search overlay -->
 <div class="search-panel" id="searchPanel" role="dialog" aria-label="Search" aria-hidden="true" hidden>
     <div class="container">
-        <form class="search-form" action="<?= e(url('search.php')) ?>" method="get" role="search">
+        <form class="search-form" action="<?= e(url('shop.php')) ?>" method="get" role="search">
             <?= icon('search') ?>
             <input type="search" name="q" id="searchInput" placeholder="Search tees, hoodies, jackets..." autocomplete="off" maxlength="100" aria-label="Search products" required>
             <button type="button" class="icon-btn" data-search-close aria-label="Close search"><?= icon('x') ?></button>

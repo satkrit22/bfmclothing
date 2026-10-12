@@ -2,7 +2,7 @@
 
 A premium clothing e-commerce store built with **PHP 8 + MySQL + HTML/CSS + vanilla JavaScript**, designed to run locally in **XAMPP**. No frameworks, no build step.
 
-> **Status: Part 1 of 6 (foundation).** Database, configuration, shared functions, authentication helpers, layout (header / navbar / footer), global CSS and JavaScript are done. Storefront pages arrive in Parts 2-4 and the admin panel in Part 5. See the roadmap at the bottom.
+> **Status:** storefront, cart, checkout (cash on delivery) and a full admin panel with sales reports are included. The whole database is ONE file: `database/bfm_clothing.sql`.
 
 ---
 
@@ -15,7 +15,7 @@ A premium clothing e-commerce store built with **PHP 8 + MySQL + HTML/CSS + vani
    (on macOS: `/Applications/XAMPP/htdocs/bfm-clothing`)
 4. Open **phpMyAdmin**: http://localhost/phpmyadmin
 5. Click the **Import** tab, choose `database/bfm_clothing.sql`, then click **Import**.
-   This creates the `bfm_clothing` database, all tables, and sample data (12 products, coupons, demo users, one admin).
+   This creates the `bfm_clothing` database, all tables, roles and sample data (12 products, coupons, demo users, 16 sample orders, one admin). Re-importing wipes and recreates everything.
 6. **Database credentials** are in `config/config.php`. The XAMPP defaults already work:
    ```php
    const DB_HOST = '127.0.0.1';
@@ -34,16 +34,29 @@ The site detects its own URL path automatically. Only two files hard-code `/bfm-
 
 ---
 
-## 2. Admin panel (built in Part 5)
+## 2. Admin panel
 
 URL: **http://localhost/bfm-clothing/admin/**
 
 | | |
 |---|---|
-| Email | `admin@bfmclothing.com` |
+| Email or username | `admin@bfmclothing.com` or `admin` |
 | Password | `Admin@12345` |
 
-**These are development credentials. Change the password immediately** (Admin > Profile) before the site is ever reachable from the internet. The database stores only a bcrypt hash; no password is written in any PHP file.
+**Change this password straight away** (Admin > My profile). Only a bcrypt hash is stored in the database.
+
+| Page | What you can do |
+|---|---|
+| Dashboard | 30-day revenue chart, orders, best sellers, low-stock list |
+| Sales report | Any date range, group by day/week/month, top products, categories, cities, coupons, CSV export, print |
+| Orders | Search/filter, status workflow (cancelling returns stock), payment status, internal notes, delete, CSV export |
+| Customers | Create, edit, disable, delete, order history; super admins also manage staff accounts and roles |
+| Products | Create, edit, hide, delete; sizes/colours with stock; multiple photos; CSV export |
+| Categories, Coupons | Create, edit, hide/disable, delete |
+| Reviews, Messages | Approve/hide/delete reviews; read, reply, delete contact messages |
+| Settings, Activity log | Store details, delivery fee, free-delivery level, low-stock alert; who changed what |
+
+Roles: `staff` (orders, customers view, messages), `admin` (store management and reports), `super_admin` (everything, including settings, staff roles and order deletion).
 
 ### Demo customer accounts
 | Email | Password |
@@ -52,7 +65,7 @@ URL: **http://localhost/bfm-clothing/admin/**
 | `sam@example.com` | `Customer@123` |
 
 ### Coupon codes in the sample data
-`WELCOME10` (10% off), `BFM20` (20% off orders of 100+), `SAVE15` (15 off orders of 75+).
+`WELCOME10` (10% off, max Rs. 500), `BFM20` (20% off orders of Rs. 5,000+), `FLAT300` (Rs. 300 off orders of Rs. 2,500+).
 
 ---
 
@@ -64,7 +77,7 @@ bfm-clothing/
 ├── 404.php                                  not-found page
 ├── placeholder.php                          generates placeholder product images (SVG)
 ├── robots.txt, .htaccess
-├── admin/                                   admin panel (Part 5)
+├── admin/                                   admin panel (login, dashboard, reports, CRUD pages)
 ├── api/                                     JSON endpoints used by main.js (Parts 2-4)
 ├── config/
 │   ├── config.php                           constants, secure session, headers, error handling
@@ -73,7 +86,7 @@ bfm-clothing/
 │   ├── init.php                             bootstrap: require this first on every page
 │   ├── functions.php                        helpers (e(), url(), CSRF, flash, pricing, uploads...)
 │   ├── auth.php                             customer login/logout/remember-me/protection
-│   ├── admin-auth.php                       admin login/logout/protection
+│   ├── admin-auth.php  admin-ui.php         admin protection, permissions, layout, charts, CSV
 │   ├── components.php                       product_card(), product_list_select()
 │   ├── header.php  navbar.php  footer.php   storefront layout
 │   └── icons.php                            inline SVG icon sprite
@@ -81,7 +94,7 @@ bfm-clothing/
 │   ├── css/style.css   js/main.js
 │   ├── images/                              your own images (logo, hero, ...)
 │   └── uploads/products/                    admin uploads (script execution disabled)
-├── database/bfm_clothing.sql                schema + sample data
+├── database/bfm_clothing.sql                the ONLY database file: schema, roles, sample data
 └── logs/                                    PHP error log (not web accessible)
 ```
 
@@ -101,7 +114,7 @@ require __DIR__ . '/includes/header.php';
 <?php require __DIR__ . '/includes/footer.php'; ?>
 ```
 **A protected customer page:** call `require_login();` right after `init.php`.
-**An admin page:** `require_once __DIR__ . '/../includes/admin-auth.php';` (protects the page automatically). `admin/login.php` first does `define('ADMIN_LOGIN_PAGE', true);`.
+**An admin page:** require `includes/admin-auth.php` and `includes/admin-ui.php`, call `admin_require('permission.name')`, then `admin_header(...)` / `admin_footer()`. `admin/login.php` first does `define('ADMIN_LOGIN_PAGE', true);`.
 
 **Session keys:** `user_id`, `admin_id`, `cart` (`[variant_id => qty]`), `coupon`, `csrf_token`, `flash`.
 **Cart rule:** the cart stores only variant IDs and quantities. Prices, stock and totals are always recalculated from the database on the server.
@@ -139,17 +152,6 @@ require __DIR__ . '/includes/header.php';
 
 ## 6. Replacing placeholder images
 
-Products without photos use `placeholder.php`. To add photos, use **Admin > Products > Edit** (Part 5), or put files in `assets/uploads/products/` and add rows to `product_images`. For the hero, brand and social sections, drop your images into `assets/images/` and update the paths in `index.php`.
+Products without photos use `placeholder.php`. To add photos, use **Admin > Products > Edit**, or put files in `assets/uploads/products/` and add rows to `product_images`. For the hero, brand and social sections, drop your images into `assets/images/` and update the paths in `index.php`.
 
 ---
-
-## 7. Roadmap
-
-| Part | Contents | Status |
-|---|---|---|
-| 1 | Architecture, DB, config, functions, layout, CSS, JS, README | **Done** |
-| 2 | Home, Shop (filters/sort/pagination), Product, Categories, Search, quick view + search APIs | Next |
-| 3 | Register, Login, Account, Wishlist, Cart, cart + wishlist APIs | |
-| 4 | Checkout, orders, order success, reviews, coupons, contact, newsletter | |
-| 5 | Admin panel (dashboard, products, categories, orders, customers, coupons, settings) | |
-| 6 | Security review, fixes, responsive polish, About/FAQ/Privacy/Terms, sitemap | |

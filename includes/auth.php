@@ -13,9 +13,18 @@ function is_logged_in(): bool
     return !empty($_SESSION['user_id']);
 }
 
+/**
+ * Role of the logged-in user, read from the database (cached per request).
+ * It is deliberately NOT stored in the session, so a demoted or disabled
+ * account loses access immediately and remember-me logins keep their role.
+ */
 function current_role(): string
 {
-    return (string)($_SESSION['user_role'] ?? 'customer');
+    if (!is_logged_in()) {
+        return 'customer';
+    }
+    $user = current_user();
+    return $user ? (string)$user['role'] : 'customer';
 }
 
 function has_role(string ...$roles): bool
@@ -66,6 +75,7 @@ function logout_user(): void
         clear_remember_cookie((int)$_SESSION['user_id']);
     }
     unset($_SESSION['user_id'], $_SESSION['user_role'], $_SESSION['admin_id'], $_SESSION['admin_last_seen'], $_SESSION['cart'], $_SESSION['coupon']);
+    // current_user() caches per request; nothing else to reset because logout ends the request flow.
     session_regenerate_id(true);
 }
 

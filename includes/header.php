@@ -12,9 +12,12 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/init.php';
-require_once __DIR__ . '/components.php';
 
 $siteName   = setting('site_name', APP_NAME);
+// Several pages set $pageTitle (camelCase); accept both spellings.
+if (!isset($page_title) && isset($pageTitle) && is_string($pageTitle)) {
+    $page_title = $pageTitle;
+}
 $pageTitle  = isset($page_title) && $page_title !== '' ? $page_title . ' | ' . $siteName : $siteName . ' - ' . setting('tagline', 'Modern essentials');
 $pageDesc   = $page_description ?? 'BFM Clothing: premium everyday essentials designed for comfort, fit and lasting quality. Free shipping on orders over ' . money((float)setting('free_shipping_threshold', '100')) . '.';
 $pageImage  = $page_image ?? url('placeholder.php?t=BFM&i=0&w=1200&h=630');
@@ -55,4 +58,4 @@ $bodyClass  = trim('site ' . ($body_class ?? ''));
 <?php require __DIR__ . '/icons.php'; ?>
 <a class="skip-link" href="#main">Skip to content</a>
 <?php require __DIR__ . '/navbar.php'; ?>
-<main id="main">
+<div id="main">

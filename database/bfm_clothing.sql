@@ -1,27 +1,38 @@
 -- ============================================================
--- BFM Clothing - database schema + sample data
--- Import in phpMyAdmin (Import tab) or: mysql -u root < bfm_clothing.sql
--- Requires MySQL 5.7+ / MariaDB 10.3+ (XAMPP default is fine)
+-- BFM Clothing - COMPLETE database (single file)
+-- Schema + roles/permissions + sample data (products, customers, coupons, orders).
+--
+-- Import in phpMyAdmin (Import tab) or:  mysql -u root < bfm_clothing.sql
+-- Requires MySQL 5.7+ / MariaDB 10.3+ (the XAMPP default is fine).
+--
+-- This file REPLACES the old three-file setup. You no longer need
+-- 001_rbac_upgrade.sql or 002_unified_users.sql. Importing it drops and
+-- recreates every table, so only use it on a fresh / disposable database.
 -- ============================================================
 CREATE DATABASE IF NOT EXISTS `bfm_clothing` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `bfm_clothing`;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS login_attempts, contact_messages, newsletter_subscribers, settings, reviews,
+DROP TABLE IF EXISTS audit_logs, role_permissions, user_roles, permissions, roles,
+  login_attempts, contact_messages, newsletter_subscribers, settings, reviews,
   order_items, orders, coupons, wishlist, cart, addresses, product_variants, product_images,
   products, categories, admins, users;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- ---------- USERS ----------
+-- ============================================================
+-- USERS (customers AND staff share one table; `role` decides access)
+-- ============================================================
 CREATE TABLE users (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(60) NOT NULL,
   last_name VARCHAR(60) NOT NULL,
   email VARCHAR(190) NOT NULL,
+  username VARCHAR(80) DEFAULT NULL,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('customer','staff','admin','super_admin') NOT NULL DEFAULT 'customer',
+  status ENUM('active','disabled') NOT NULL DEFAULT 'active',
   phone VARCHAR(30) DEFAULT NULL,
   remember_selector CHAR(24) DEFAULT NULL,
   remember_token_hash CHAR(64) DEFAULT NULL,
@@ -32,20 +43,56 @@ CREATE TABLE users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_users_username (username),
+  KEY idx_users_role (role),
   KEY idx_users_remember (remember_selector),
   KEY idx_users_reset (reset_token_hash)
 ) ENGINE=InnoDB;
 
-CREATE TABLE admins (
+-- Role based access control. The admin panel reads role_permissions
+-- (super_admin always has every permission).
+CREATE TABLE roles (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(190) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  role ENUM('super_admin','manager') NOT NULL DEFAULT 'super_admin',
-  is_active TINYINT(1) NOT NULL DEFAULT 1,
-  last_login_at DATETIME DEFAULT NULL,
+  name VARCHAR(40) NOT NULL,
+  description VARCHAR(255) DEFAULT NULL,
+  UNIQUE KEY uq_roles_name (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE permissions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  description VARCHAR(255) DEFAULT NULL,
+  UNIQUE KEY uq_permissions_name (name)
+) ENGINE=InnoDB;
+
+CREATE TABLE user_roles (
+  user_id INT UNSIGNED NOT NULL,
+  role_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (user_id, role_id),
+  CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE role_permissions (
+  role_id INT UNSIGNED NOT NULL,
+  permission_id INT UNSIGNED NOT NULL,
+  PRIMARY KEY (role_id, permission_id),
+  CONSTRAINT fk_role_perm_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+  CONSTRAINT fk_role_perm_perm FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE audit_logs (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED DEFAULT NULL,
+  action VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(60) DEFAULT NULL,
+  entity_id INT UNSIGNED DEFAULT NULL,
+  details TEXT,
+  ip_address VARCHAR(45) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_admins_email (email)
+  KEY idx_audit_created (created_at),
+  KEY idx_audit_entity (entity_type, entity_id),
+  CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE addresses (
@@ -64,7 +111,9 @@ CREATE TABLE addresses (
   CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------- CATALOG ----------
+-- ============================================================
+-- CATALOG
+-- ============================================================
 CREATE TABLE categories (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80) NOT NULL,
@@ -133,9 +182,11 @@ CREATE TABLE product_variants (
   CONSTRAINT fk_variants_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------- CART / WISHLIST ----------
+-- ============================================================
+-- CART / WISHLIST
 -- Guests keep their cart in $_SESSION['cart'] (variant_id => qty).
 -- This table stores the cart of logged-in users so it survives logout/login.
+-- ============================================================
 CREATE TABLE cart (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id INT UNSIGNED NOT NULL,
@@ -157,7 +208,9 @@ CREATE TABLE wishlist (
   CONSTRAINT fk_wishlist_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------- COUPONS / ORDERS ----------
+-- ============================================================
+-- COUPONS / ORDERS
+-- ============================================================
 CREATE TABLE coupons (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(40) NOT NULL,
@@ -195,11 +248,13 @@ CREATE TABLE orders (
   payment_status ENUM('unpaid','paid','refunded') NOT NULL DEFAULT 'unpaid',
   status ENUM('pending','confirmed','processing','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending',
   notes VARCHAR(500) DEFAULT NULL,
+  admin_notes VARCHAR(500) DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_orders_number (order_number),
   KEY idx_orders_user (user_id),
   KEY idx_orders_status (status, created_at),
+  KEY idx_orders_created (created_at),
   KEY idx_orders_email (email),
   CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -238,7 +293,9 @@ CREATE TABLE reviews (
   CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- ---------- MISC ----------
+-- ============================================================
+-- MISC
+-- ============================================================
 CREATE TABLE newsletter_subscribers (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(190) NOT NULL,
@@ -276,15 +333,58 @@ CREATE TABLE login_attempts (
 -- SAMPLE DATA
 -- ============================================================
 
--- Admin: admin@bfmclothing.com / Admin@12345  (CHANGE IMMEDIATELY - see README)
-INSERT INTO admins (name, email, password_hash, role) VALUES
-('Store Admin', 'admin@bfmclothing.com', '$2y$12$hNUH74ujZ087XxyJYxAQqOAn3iicvZVCdJwf96Hq2tWIQl7GzFhUG', 'super_admin');
+-- Roles and permissions -------------------------------------
+INSERT INTO roles (name, description) VALUES
+('customer',    'Shopping and account access'),
+('staff',       'Order fulfilment and customer support'),
+('admin',       'Store management: catalogue, customers, coupons, reports'),
+('super_admin', 'Everything, including settings, staff roles and deletions');
 
--- Demo customers: customer@example.com / Customer@123
-INSERT INTO users (first_name, last_name, email, password_hash, phone) VALUES
-('Alex', 'Morgan', 'customer@example.com', '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+1 555 0100'),
-('Sam', 'Rivera', 'sam@example.com', '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+1 555 0101');
+INSERT INTO permissions (name, description) VALUES
+('dashboard.view',   'See the admin dashboard'),
+('orders.view',      'View orders'),
+('orders.manage',    'Change order and payment status'),
+('orders.delete',    'Permanently delete orders'),
+('customers.view',   'View customers'),
+('customers.manage', 'Create, edit and delete customers'),
+('products.manage',  'Create, edit and delete products'),
+('categories.manage','Create, edit and delete categories'),
+('coupons.manage',   'Create, edit and delete coupons'),
+('reviews.manage',   'Approve and delete reviews'),
+('messages.manage',  'Read and delete contact messages'),
+('reports.view',     'Open the sales report'),
+('settings.manage',  'Change store settings and view the activity log'),
+('users.roles',      'Assign staff and admin roles');
 
+-- staff
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r JOIN permissions p
+WHERE r.name = 'staff' AND p.name IN ('dashboard.view','orders.view','orders.manage','customers.view','messages.manage');
+
+-- admin
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r JOIN permissions p
+WHERE r.name = 'admin' AND p.name IN ('dashboard.view','orders.view','orders.manage','customers.view','customers.manage',
+  'products.manage','categories.manage','coupons.manage','reviews.manage','messages.manage','reports.view');
+
+-- super_admin (everything)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'super_admin';
+
+-- Users ------------------------------------------------------
+-- Customers (password for all demo customers: Customer@123)
+INSERT INTO users (id, first_name, last_name, email, password_hash, phone) VALUES
+(1, 'Alex',  'Morgan', 'customer@example.com', '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+977 9800000001'),
+(2, 'Sam',   'Rivera', 'sam@example.com',      '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+977 9800000002'),
+(3, 'Priya', 'Sharma', 'priya@example.com',    '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+977 9800000003'),
+(4, 'Rohan', 'Thapa',  'rohan@example.com',    '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+977 9800000004'),
+(5, 'Anita', 'Gurung', 'anita@example.com',    '$2y$12$s1ju8Kse5KxlzzaLVb8XU.0Uq/aiNxOSvxT4cu21Wf4InsBCCEGGG', '+977 9800000005');
+
+-- Admin: admin@bfmclothing.com / Admin@12345   (CHANGE THE PASSWORD IMMEDIATELY: Admin > My profile)
+INSERT INTO users (id, first_name, last_name, email, username, password_hash, role) VALUES
+(6, 'Store', 'Admin', 'admin@bfmclothing.com', 'admin', '$2y$12$hNUH74ujZ087XxyJYxAQqOAn3iicvZVCdJwf96Hq2tWIQl7GzFhUG', 'super_admin');
+
+-- Categories -------------------------------------------------
 INSERT INTO categories (id, name, slug, description, sort_order) VALUES
 (1, 'T-Shirts',    't-shirts',    'Everyday tees in heavyweight cotton.', 1),
 (2, 'Hoodies',     'hoodies',     'Hoodies and sweatshirts built for layering.', 2),
@@ -294,6 +394,7 @@ INSERT INTO categories (id, name, slug, description, sort_order) VALUES
 (6, 'Jackets',     'jackets',     'Outerwear for every season.', 6),
 (7, 'Accessories', 'accessories', 'Caps and finishing touches.', 7);
 
+-- Products ---------------------------------------------------
 INSERT INTO products (id, category_id, name, slug, sku, gender, short_description, description, price, sale_price, tags, is_featured, is_new, sold_count) VALUES
 (1, 1, 'Essential Oversized T-Shirt', 'essential-oversized-t-shirt', 'BFM-TS-001', 'unisex',
  'Heavyweight 240gsm cotton tee with a boxy, dropped-shoulder fit.',
@@ -379,9 +480,9 @@ INSERT INTO product_variants (product_id, size, color, color_hex, sku, stock) VA
 (12, 'One Size', 'Olive', '#5B6049', 'BFM-CP-012-OLI-OS', 0);
 
 -- Product images are optional: products without rows use a generated placeholder.
--- Upload real photos from Admin > Products, or insert rows such as:
--- INSERT INTO product_images (product_id, image_path, alt_text, is_primary) VALUES (1, 'products/tee-1.jpg', 'Essential Oversized T-Shirt', 1);
+-- Upload real photos from Admin > Products > Edit.
 
+-- Reviews ----------------------------------------------------
 INSERT INTO reviews (product_id, user_id, rating, title, comment) VALUES
 (1, 1, 5, 'Perfect fit', 'Heavy, soft and the oversized cut is spot on.'),
 (1, 2, 4, 'Great tee', 'Quality is excellent. Size down if you want it less boxy.'),
@@ -402,21 +503,82 @@ UPDATE products p SET
   rating_avg = COALESCE((SELECT ROUND(AVG(r.rating), 2) FROM reviews r WHERE r.product_id = p.id AND r.is_approved = 1), 0),
   rating_count = (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id AND r.is_approved = 1);
 
-INSERT INTO coupons (code, type, value, min_order, max_discount, usage_limit, expires_at) VALUES
-('WELCOME10', 'percent', 10.00, 0,      50.00, NULL, DATE_ADD(NOW(), INTERVAL 1 YEAR)),
-('BFM20',     'percent', 20.00, 100.00, 60.00, 500,  DATE_ADD(NOW(), INTERVAL 6 MONTH)),
-('SAVE15',    'fixed',   15.00, 75.00,  NULL,  NULL, DATE_ADD(NOW(), INTERVAL 6 MONTH));
+-- Coupons (amounts are in Rs.) -------------------------------
+INSERT INTO coupons (code, type, value, min_order, max_discount, usage_limit, used_count, expires_at) VALUES
+('WELCOME10', 'percent', 10.00, 0,       500.00,  NULL, 1, DATE_ADD(NOW(), INTERVAL 1 YEAR)),
+('BFM20',     'percent', 20.00, 5000.00, 1500.00, 500,  1, DATE_ADD(NOW(), INTERVAL 6 MONTH)),
+('FLAT300',   'fixed',   300.00, 2500.00, NULL,   NULL, 0, DATE_ADD(NOW(), INTERVAL 6 MONTH));
 
+-- Store settings (money is shown as "<currency_symbol> 1,234.00") ----
 INSERT INTO settings (setting_key, setting_value) VALUES
 ('site_name', 'BFM Clothing'),
 ('tagline', 'Modern essentials for everyday confidence.'),
 ('contact_email', 'hello@bfmclothing.com'),
-('contact_phone', '+1 555 010 0200'),
+('contact_phone', '+977 1 5550200'),
 ('contact_address', '12 Studio Lane, Kathmandu, Nepal'),
-('currency_symbol', '$'),
-('shipping_flat_rate', '8.00'),
-('free_shipping_threshold', '100.00'),
+('currency_symbol', 'Rs.'),
+('shipping_flat_rate', '150'),
+('free_shipping_threshold', '3000'),
+('low_stock_threshold', '5'),
 ('instagram_url', 'https://instagram.com/'),
 ('facebook_url', 'https://facebook.com/'),
 ('tiktok_url', 'https://tiktok.com/'),
-('promo_banner', 'Free shipping on orders over $100');
+('promo_banner', 'Free delivery on orders over Rs. 3,000');
+
+-- ------------------------------------------------------------
+-- SAMPLE ORDERS (so the dashboard and sales report have data).
+-- Safe to delete: Admin > Orders, or run  DELETE FROM orders;
+-- ------------------------------------------------------------
+INSERT INTO orders (id, user_id, customer_name, email, phone, address_line, city, state, country, postal_code,
+                    subtotal, discount, shipping, total, coupon_code, payment_method, payment_status, status, created_at) VALUES
+(1,  1, 'Alex Morgan',  'customer@example.com', '+977 9800000001', 'Baneshwor 10',   'Kathmandu', 'Bagmati', 'Nepal', '44600', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 58 DAY)),
+(2,  2, 'Sam Rivera',   'sam@example.com',      '+977 9800000002', 'Jawalakhel 4',   'Lalitpur',  'Bagmati', 'Nepal', '44700', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 52 DAY)),
+(3,  3, 'Priya Sharma', 'priya@example.com',    '+977 9800000003', 'Lakeside 7',     'Pokhara',   'Gandaki', 'Nepal', '33700', 0, 0, 0, 0, 'WELCOME10', 'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 47 DAY)),
+(4,  4, 'Rohan Thapa',  'rohan@example.com',    '+977 9800000004', 'Main Road 12',   'Biratnagar','Koshi',   'Nepal', '56613', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 41 DAY)),
+(5,  1, 'Alex Morgan',  'customer@example.com', '+977 9800000001', 'Baneshwor 10',   'Kathmandu', 'Bagmati', 'Nepal', '44600', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 36 DAY)),
+(6,  5, 'Anita Gurung', 'anita@example.com',    '+977 9800000005', 'Traffic Chowk 2','Butwal',    'Lumbini', 'Nepal', '32907', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 31 DAY)),
+(7,  2, 'Sam Rivera',   'sam@example.com',      '+977 9800000002', 'Jawalakhel 4',   'Lalitpur',  'Bagmati', 'Nepal', '44700', 0, 0, 0, 0, 'BFM20',     'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 26 DAY)),
+(8,  3, 'Priya Sharma', 'priya@example.com',    '+977 9800000003', 'Lakeside 7',     'Pokhara',   'Gandaki', 'Nepal', '33700', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'cancelled',  DATE_SUB(NOW(), INTERVAL 21 DAY)),
+(9,  4, 'Rohan Thapa',  'rohan@example.com',    '+977 9800000004', 'Main Road 12',   'Biratnagar','Koshi',   'Nepal', '56613', 0, 0, 0, 0, NULL,        'cod', 'paid',   'delivered',  DATE_SUB(NOW(), INTERVAL 17 DAY)),
+(10, 1, 'Alex Morgan',  'customer@example.com', '+977 9800000001', 'Baneshwor 10',   'Kathmandu', 'Bagmati', 'Nepal', '44600', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'shipped',    DATE_SUB(NOW(), INTERVAL 12 DAY)),
+(11, 5, 'Anita Gurung', 'anita@example.com',    '+977 9800000005', 'Traffic Chowk 2','Butwal',    'Lumbini', 'Nepal', '32907', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'processing', DATE_SUB(NOW(), INTERVAL 9 DAY)),
+(12, 2, 'Sam Rivera',   'sam@example.com',      '+977 9800000002', 'Jawalakhel 4',   'Lalitpur',  'Bagmati', 'Nepal', '44700', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'confirmed',  DATE_SUB(NOW(), INTERVAL 6 DAY)),
+(13, 3, 'Priya Sharma', 'priya@example.com',    '+977 9800000003', 'Lakeside 7',     'Pokhara',   'Gandaki', 'Nepal', '33700', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'pending',    DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(14, 1, 'Alex Morgan',  'customer@example.com', '+977 9800000001', 'Baneshwor 10',   'Kathmandu', 'Bagmati', 'Nepal', '44600', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'pending',    DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(15, 5, 'Anita Gurung', 'anita@example.com',    '+977 9800000005', 'Traffic Chowk 2','Butwal',    'Lumbini', 'Nepal', '32907', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'pending',    DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(16, 2, 'Sam Rivera',   'sam@example.com',      '+977 9800000002', 'Jawalakhel 4',   'Lalitpur',  'Bagmati', 'Nepal', '44700', 0, 0, 0, 0, NULL,        'cod', 'unpaid', 'pending',    NOW());
+
+INSERT INTO order_items (order_id, product_id, variant_id, product_name, sku, size, color, unit_price, quantity, line_total)
+SELECT t.oid, p.id, v.id, p.name, v.sku, v.size, v.color,
+       IF(p.sale_price IS NOT NULL AND p.sale_price < p.price, p.sale_price, p.price),
+       t.qty,
+       IF(p.sale_price IS NOT NULL AND p.sale_price < p.price, p.sale_price, p.price) * t.qty
+FROM (
+  SELECT 1 oid, 'BFM-TS-001-BLA-M' sku, 2 qty UNION ALL SELECT 1, 'BFM-CP-012-BLA-OS', 1
+  UNION ALL SELECT 2, 'BFM-HD-002-SAN-L', 1
+  UNION ALL SELECT 3, 'BFM-SH-003-WHI-M', 1 UNION ALL SELECT 3, 'BFM-PT-005-BLA-32', 1
+  UNION ALL SELECT 4, 'BFM-JK-004-BLA-L', 1
+  UNION ALL SELECT 5, 'BFM-TS-007-WHI-S', 3 UNION ALL SELECT 5, 'BFM-CP-012-SAN-OS', 1
+  UNION ALL SELECT 6, 'BFM-JN-006-IND-32', 1 UNION ALL SELECT 6, 'BFM-PL-009-BLA-L', 1
+  UNION ALL SELECT 7, 'BFM-HD-010-BLA-XL', 2 UNION ALL SELECT 7, 'BFM-JK-004-OLI-M', 1
+  UNION ALL SELECT 8, 'BFM-SW-008-SAN-M', 1
+  UNION ALL SELECT 9, 'BFM-PT-011-KHA-30', 1 UNION ALL SELECT 9, 'BFM-TS-001-WHI-L', 1
+  UNION ALL SELECT 10, 'BFM-HD-002-BLA-M', 1 UNION ALL SELECT 10, 'BFM-TS-007-BLA-L', 2
+  UNION ALL SELECT 11, 'BFM-JN-006-WAS-34', 1
+  UNION ALL SELECT 12, 'BFM-PL-009-WHI-M', 2
+  UNION ALL SELECT 13, 'BFM-HD-010-SAN-L', 1
+  UNION ALL SELECT 14, 'BFM-JK-004-BLA-S', 1
+  UNION ALL SELECT 15, 'BFM-TS-001-SAN-S', 2
+  UNION ALL SELECT 16, 'BFM-CP-012-BLA-OS', 2 UNION ALL SELECT 16, 'BFM-SW-008-BLA-L', 1
+) t
+JOIN product_variants v ON v.sku = t.sku
+JOIN products p ON p.id = v.product_id;
+
+-- Work out the order totals from their items
+UPDATE orders o SET o.subtotal = (SELECT COALESCE(SUM(i.line_total), 0) FROM order_items i WHERE i.order_id = o.id) WHERE o.id <= 16;
+UPDATE orders SET discount = LEAST(ROUND(subtotal * 0.10, 2), 500.00)  WHERE coupon_code = 'WELCOME10' AND id <= 16;
+UPDATE orders SET discount = LEAST(ROUND(subtotal * 0.20, 2), 1500.00) WHERE coupon_code = 'BFM20' AND id <= 16;
+UPDATE orders SET shipping = IF(subtotal >= 3000, 0, 150) WHERE id <= 16;
+UPDATE orders SET total = subtotal - discount + shipping,
+                  order_number = CONCAT('BFM-', YEAR(created_at), '-', LPAD(id, 6, '0'))
+WHERE id <= 16;

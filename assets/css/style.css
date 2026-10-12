@@ -233,7 +233,11 @@ textarea.form-control { min-height: 130px; resize: vertical; }
 .wish-btn.is-active { color: var(--sale); }
 .product-actions { position: absolute; left: 10px; right: 10px; bottom: 10px; display: grid; grid-auto-flow: column; gap: 8px; opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s var(--ease); }
 .product-card:hover .product-actions, .product-card:focus-within .product-actions { opacity: 1; transform: none; }
-@media (hover: none) { .product-actions { display: none; } }
+/* Touch screens have no hover, so keep Quick view / Add to cart visible instead of hiding them. */
+@media (hover: none) {
+  .product-actions { opacity: 1; transform: none; left: 6px; right: 6px; bottom: 6px; gap: 6px; }
+  .product-actions .btn { padding: 8px 6px; font-size: .78rem; min-height: 38px; }
+}
 .product-info { padding-top: 14px; }
 .product-cat { margin: 0 0 2px; font-size: .82rem; color: var(--muted); }
 .product-name { margin: 0 0 6px; font-family: var(--font-body); font-weight: 600; font-stretch: 100%; font-size: 1rem; letter-spacing: 0; line-height: 1.3; }
@@ -557,3 +561,72 @@ dialog.modal[open] { animation: pop .22s var(--ease); }
   .buy-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 375px) { .grid-products { gap: 24px 12px; } .product-name { font-size: .92rem; } }
+
+/* ==========================================================================
+   Cart, checkout, order pages (added with the cart/checkout rebuild)
+   ========================================================================== */
+.cart-row { align-items: center; }
+.cart-thumb { flex: 0 0 96px; aspect-ratio: 4 / 5; background: var(--sand); overflow: hidden; border-radius: var(--r); }
+.cart-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cart-info { flex: 1; min-width: 0; }
+.cart-info h2 a:hover { text-decoration: underline; }
+.cart-unit { font-size: .9rem; }
+.cart-line { min-width: 96px; text-align: right; font-size: 1.05rem; }
+@media (max-width: 640px) {
+  .cart-row { flex-wrap: wrap; }
+  .cart-info { flex-basis: calc(100% - 120px); }
+  .cart-controls { justify-content: flex-start; order: 3; }
+  .cart-line { order: 4; margin-left: auto; }
+}
+.cart-summary h2 { font-size: 1.15rem; margin-bottom: 16px; }
+.cart-summary p { border-bottom: 0; padding-bottom: 0; font-size: 1rem; }
+.summary-lines { margin: 18px 0 20px; }
+.summary-lines > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: .95rem; }
+.summary-lines dt { color: var(--muted); }
+.summary-lines dd { margin: 0; font-weight: 600; }
+.summary-lines .is-discount dd { color: var(--ok); }
+.summary-lines .is-total { border-bottom: 0; padding-top: 14px; font-size: 1.15rem; }
+.summary-lines .is-total dt { color: var(--ink); font-weight: 700; }
+.summary-note { display: block !important; color: var(--muted); font-size: .88rem !important; margin: 0 0 14px; text-align: center; }
+.summary-continue { display: block; text-align: center; margin-top: 14px; }
+.coupon-form { display: flex; gap: 8px; margin-bottom: 4px; }
+.coupon-form input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); background: #fff; font: inherit; text-transform: uppercase; border-radius: var(--r); }
+.coupon-applied { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: #edf7f1; color: #14573a; border: 1px solid #bfe0cd; border-radius: var(--r); font-size: .92rem; }
+.coupon-applied .icon { width: 16px; height: 16px; }
+.summary-items { display: grid; gap: 14px; margin: 0 0 8px; }
+.summary-items li { display: flex; align-items: center; gap: 12px; }
+.summary-items img { width: 56px; height: 70px; object-fit: cover; background: var(--sand); border-radius: var(--r); flex: none; }
+.summary-items div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.summary-items span { color: var(--muted); font-size: .85rem; }
+.summary-items b { font-weight: 600; white-space: nowrap; }
+
+.checkout-layout { display: grid; gap: 32px; margin-top: 28px; }
+@media (min-width: 900px) { .checkout-layout { grid-template-columns: minmax(0, 1fr) 380px; gap: 56px; align-items: start; } .checkout-layout .cart-summary { position: sticky; top: calc(var(--header-h) + 20px); } }
+.form-block { border: 0; padding: 0; margin: 0 0 8px; display: grid; gap: 14px; }
+.form-block legend { font-weight: 700; font-size: 1.05rem; margin-bottom: 12px; padding: 0; }
+.form-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .form-grid { grid-template-columns: 1fr 1fr; } }
+.pay-option { display: flex !important; grid-template-columns: none; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: var(--r); cursor: pointer; font-weight: 400 !important; }
+.pay-option input { width: auto !important; margin-top: 4px; }
+.pay-option span { display: grid; gap: 2px; }
+.pay-option small { color: var(--muted); }
+.pay-option.is-selected { border-color: var(--ink); background: var(--stone); }
+.pay-option.is-disabled { opacity: .55; cursor: not-allowed; }
+
+.order-success { max-width: 1000px; }
+.success-mark { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: #e5f4ec; color: var(--ok); margin-bottom: 18px; }
+.success-mark .icon { width: 28px; height: 28px; }
+.orders-list { display: grid; gap: 14px; margin-top: 28px; }
+.order-card { border: 1px solid var(--line); background: #fff; border-radius: var(--r); }
+.order-card summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 18px 20px; cursor: pointer; list-style: none; }
+.order-card summary::-webkit-details-marker { display: none; }
+.order-no { font-weight: 700; }
+.order-date { color: var(--muted); font-size: .9rem; }
+.order-total { margin-left: auto; }
+.order-body { padding: 4px 20px 20px; border-top: 1px solid var(--line); padding-top: 18px; }
+.order-meta { color: var(--muted); font-size: .88rem; margin-top: 14px; }
+.review-list { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.review { background: #fff; padding: 20px; border: 1px solid var(--line); border-radius: var(--r); }
+.review h3 { font-size: 1rem; margin: 8px 0 6px; }
+.review p { color: var(--muted); margin: 0 0 10px; }
+.toast-info { background: #1b3d5e; }

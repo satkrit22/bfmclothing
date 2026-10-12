@@ -1,9 +1,5 @@
 <?php
-/**
- * Generates a neutral SVG placeholder so the store never shows broken images.
- * Usage: placeholder.php?t=Product+Name&i=0&w=600&h=750
- * Replace by uploading real product photos in the admin panel.
- */
+
 declare(strict_types=1);
 
 $text = mb_substr(trim((string)($_GET['t'] ?? 'BFM')), 0, 40);
